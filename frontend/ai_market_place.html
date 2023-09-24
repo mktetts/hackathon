@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain with AI</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="
+      https://cdn.jsdelivr.net/npm/web3@4.0.3/dist/web3.min.js
+      "></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <div id="app">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <div class="container">
+                <a class="navbar-brand" href="#">Blockchain And AI</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="./zero_knowledge.html">Theme1</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="./ai_market_place.html">Theme2</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        <h3 style="text-align: center;">AI Marketplace  </h3>
+        <!-- Form -->
+        <div v-if="get">
+            <div class="row">
+                <div class="col-lg-3 col-md-4 col-sm-6" v-for="file in allModels">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ file }}</h5>
+                            <p class="card-text">Price: 1 ETH</p>
+                            <button type="button" class="btn btn-primary" @click="buyModel(file)">Buy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-if="!get">
+            <button type="button" class="btn btn-primary" v-on:click.prevent="getModels()" id="submitButton"
+            style="margin-left: 200px;" >Get All Models</button>
+        </div>
+        
+        <!-- <div class="row ">
+            <div class="col-md-6">
+            </div>
+        </div> -->
+
+        <div class="alert alert-success" role="alert" style="top: 0; right: 0; position: absolute; width: 20%"
+            v-if="success">
+            {{ message }}
+        </div>
+        <div class="alert alert-danger" role="alert" style="top: 0; right: 0; position: absolute; width: 20%"
+            v-if="failed">
+            {{ message }}
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and jQuery -->
+    <script type="module">
+        import AIMarketPlace from "../smartcontract/build/contracts/AIMarketPlace.json"  assert { type: "json" };
+        import ZeroKnowledgeContract from "../smartcontract/build/contracts/ZeroKnowledgeContract.json"  assert { type: "json" };
+
+
+        var app = new Vue({
+            el: "#app",
+            data: {
+                input: {
+                    consensus_mod: '',
+                    consensus_mask: '',
+                    peer_mod: '',
+                    peer_mask: '',
+                },
+                web3: null,
+                netId: "",
+                contract: "",
+                contractAddress: "",
+                success: false,
+                failed: false,
+                message: "",
+                get : false,
+                allModels : [],
+
+                zkpAddress : '',
+                zkpContract : '',
+
+            },
+            async mounted() {
+                this.web3 = new Web3(
+                    new Web3.providers.HttpProvider(
+                        "http://192.168.100.163:8501"
+                    )
+                );
+
+                // w3 = new Web3(window.ethereum)
+                this.netId = await this.web3.eth.net.getId();
+                this.contractAddress = AIMarketPlace.networks[this.netId];
+                this.contract = new this.web3.eth.Contract(
+                    AIMarketPlace.abi,
+                    this.contractAddress.address
+                );
+
+                this.zkpAddress = ZeroKnowledgeContract.networks[this.netId]
+                this.zkpContract = new this.web3.eth.Contract(ZeroKnowledgeContract.abi, this.zkpAddress.address)
+                // this.getCandidateList();
+                $(document).ready(function () {
+                    $("#submitButton").click(function (e) {
+                        e.preventDefault();
+                        // Your form submission logic here
+                    });
+                });
+            },
+            methods: {
+                async getModels(){
+                    this.allModels.push(await this.zkpContract.methods
+						.getModelName()
+						.call())
+                    this.get = !this.get
+                },
+                async buyModel(model){
+                    console.log(model)
+                    let coinBase = await this.web3.eth.getCoinbase();
+                    await this.contract.methods
+                        .buyModel("cancer_prediction")
+                        .send({
+                            from: coinBase,
+                        })
+                        .then((e) => {
+                            console.log(e)
+                            this.success = true;
+                            this.message = "Model Purchased";
+                            setTimeout(() => {
+                                this.success = false;
+                            }, 3000);
+
+                        })
+                        .catch((err) => {
+                            // console.log("Invalid Proof : " + err)
+                            this.failed = true;
+                            this.message = "Purchasing Failed : " + err;
+                            setTimeout(() => {
+                                this.failed = false;
+                            }, 3000);
+                        });
+                } 
+            
+            }
+        });
+    </script>
+</body>
+
+</html>
